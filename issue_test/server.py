@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
-from pygroupsig import groupsig
-from pygroupsig import signature
-from pygroupsig import grpkey
-from pygroupsig import mgrkey
-from pygroupsig import gml
-from pygroupsig import identity
-from pygroupsig import constants
-from pygroupsig import message
+from pygroupsig import grpkey, constants
+from flask import request, jsonify
+import requests
 
-import json, socket
-HOST = "127.0.0.1"
-ISSUER_PORT = 11001
-RCV_SIZE = 8192
 
 class Server:
     
+    _ISSUER_URL = "http://172.17.0.3"
+    # _ISSUER_URL = "http://127.0.0.1"
+    _ISSUER_PORT = "5000"
+    TYPE_USER = 1
+    TYPE_STORE = 2
+    
     def __init__(self):
-        self.gpk = None
-        self.myTokenTable = {}
-        self.myGml = {}
+        self.gpk_user = None
+        self.my_user_token_table = {}
+        self.my_user_gml = {}
+        
+        self.gpk_store = None
+        self.my_store_token_table = {}
+        self.my_store_gml = {}
         
         self.setup()
         # Need to update server's secret key
@@ -26,96 +27,91 @@ class Server:
     
     # Load gpk
     def setup(self):
-        request = {"gpk":"request"}
-        request_json = json.dumps(request)
+        # 방역당국에 user group gpk 받아옴
+        url = Server._ISSUER_URL + "/request/gpk" + Server._ISSUER_PORT
+        request = {"group-type":Server.TYPE_USER}
+        response = requests.post(url, request)
+        response = response.json()
+        base64_gpk = response["gpk"]
+        self.gpk_user = grpkey.grpkey_import(constants.BBS04_CODE, base64_gpk)
         
-        # 방역당국에 gpk 요청
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((HOST, ISSUER_PORT))
-        client_socket.send(request_json.encode())
-        gpk_json = client_socket.recv(RCV_SIZE)
-        self.gpk = json.loads(gpk_json)
+        # 방역당국에 store group gpk 받아옴
+        url = Server._ISSUER_URL + "/request/gpk" + Server._ISSUER_PORT
+        request = {"group-type":Server.TYPE_STORE}
+        response = requests.post(url, request)
+        response = response.json()
+        base64_gpk = response["gpk"]
+        self.gpk_store = grpkey.grpkey_import(constants.BBS04_CODE, base64_gpk)
         
-        client_socket.close()
         return
     
     
     # Create valid token
     def createToken(self, id):
         # 시간 결합해서 임의의 토큰 어떻게든 발행
-        pass
-    
-    
-    # Create sign for token
-    def createSign(self, data):
-        # 서버 자체 개인키를 이용하면 됨
+        # token에 추가되야할 값은 id, 시간, 가입형태(개인, 점주 등)
         pass
     
     
     # Login
     def requestToken(self, id, pw):
-        # json 파일 파싱 필요
-        
-        # 데이터베이스에서 인증 과정
+        # 데이터베이스에서 인증 과정 ##########################################
+        # 어디 소속으로 가입했는지 알아야 함 (어느 그룹인지)
+        group_type = Server.TYPE_USER
         
         # 인증 실패
         token = {"result":False}
-        token_json = json.dumps(token, indent=4)
         
         # 인증 성공
         if id == "123" and pw == "123":
-            # token = createToken(id)
-            # sign = createSign(token)
-            token = {"token":"this is temporary token{}".format(id)}
-            token_json = json.dumps(token, indent=4)
+            # token = createToken(id, group_type)
+            token = {"token":"this is temporary token-{}-{}".format(id, group_type)}
             
-            # 방역당국에게 토큰 전달
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect((HOST, ISSUER_PORT))
-            rtn = self.sendToken(token_json, client_socket)
-            client_socket.close()
+            # 토큰 관리
+            if group_type == Server.TYPE_USER:
+                self.my_user_token_table[id] = token["token"]
+            if group_type == Server.TYPE_STORE:
+                self.my_store_token_table[id] = token["token"]
 
-            # 자체 gml 추가
-            if rtn:
-                self.myTokenTable[token["token"]] = id
-            
-        return token_json # return 되면 client에게 response되기 때문에 다른 처리 하지 않음
+        return token
     
     
-    # Send token to target
-    def sendToken(self, token, target):
-        target.send(token.encode())
-        
-        response_json = target.recv(RCV_SIZE)
-        response = json.loads(response_json)
-        
-        return response["result"]
+    # Check token's creation time
+    def validateToken(self, token):
+        # 현재 시각과 Token 생성 시각 비교
+        pass
     
     
     # Request Add Server's Gml 
-    def requestAddGml(self, token, sign):
-        # 실패 시 반환 값
-        result_json = json.dumps({"result":False})
+    def requestAddGml(self, uid, token, sign):
+        response = {"result":False}
         
-        if self.myTokenTable.get(token) == None:
-            return result_json
-
-        id = self.myTokenTable.get(token)
+        # token의 시간 비교 (validationToken(token)) 추가해야 함 ###########################
+        if (uid not in self.my_user_token_table.keys() or 
+            token != self.my_user_token_table[uid]):
+            return response
         
-        # 방역당국에게 토큰 전달
-        # 여기서는 수신한 json파일 그대로 넘겨주면 됨 
-        # (내 코드에서는 분해됐다고 가정했기 때문에 새로 재조합)
-        token_json = json.dumps({"token":token, "sign":sign})
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((HOST, ISSUER_PORT))
-        gmlId = self.sendToken(token_json, client_socket)
-        client_socket.close()
+        # 서버에 인증 요청
+        url = Server._ISSUER_URL + "/request/gml-id" + Server._ISSUER_PORT
+        request = {"token":token, "sign":sign}
+        response = requests.post(url, request)
+        response = response.json()
+        gml_id = response["id"]
         
-        # 요청 실패
-        if gmlId < 0:
-            return result_json
+        if gml_id < 0:
+            del(self.my_user_token_table[uid])
+            return response
         
-        # 방역당국의 gml idx와 내 서버의 사용자 id 맵핑
-        self.myGml[gmlId] = id
+        # token에서 그룹타입 알아내야 함
+        group_type = Server.TYPE_USER
         
-        return json.dumps({"result":True})
+        if group_type == Server.TYPE_USER:
+            del(self.my_user_token_table[uid])
+            self.my_user_gml[gml_id] = uid
+            response["result"] = True
+        if group_type == Server.TYPE_STORE:
+            del(self.my_store_token_table[uid])
+            self.my_store_gml[gml_id] = uid
+            response["result"] = True
+        
+        return response

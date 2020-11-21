@@ -1,63 +1,28 @@
 import socket 
-from _thread import *
-import json
+from flask import Flask, jsonify, request
 from issuer import Issuer
 
-RCV_SIZE = 8192
-
-def threaded(socket, addr, issuer): 
-    print('Connected by :', addr[0], ':', addr[1]) 
-    
-    # 클라이언트가 접속을 끊을 때 까지 반복합니다. 
-    while True: 
-
-        try:
-            data_json = socket.recv(RCV_SIZE)
-            
-            if not data_json: 
-                print('Disconnected by ' + addr[0],':',addr[1])
-                break
-
-            data = dict()
-            data = json.loads(data_json)
-            key = data.keys()
-            
-            # login()
-            if "sender" in key and "token" in key:
-                # 토큰 업로드
-                return_json = issuer.requestValidateToken(data["sender"], data["token"])
-                
-                # 토큰이 두개가 다 도착했는지 확인
-                
-                # 두 토큰이 정상이면 각각 값 전달
-                # from == server : 
-
-
-        except ConnectionResetError:
-            print('Disconnected by ' + addr[0],':',addr[1])
-            break
-        
-    socket.close() 
-
-
-HOST = "127.0.0.1"
-ISSUER_PORT = 11001
-
-issuer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-issuer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-issuer_socket.bind((HOST, ISSUER_PORT)) 
-issuer_socket.listen() 
-
+app = Flask(__name__)
 issuer = Issuer()
 
-print('server start')
+@app.route('/request/gpk', methods=['POST'])
+def requestGpk():
+    req = request.get_json()
+    response = issuer.requestGpk(req['group-type'])
+    return jsonify(response)
 
-# 클라이언트가 접속하면 accept 함수에서 새로운 소켓을 리턴합니다.
-# 새로운 쓰레드에서 해당 소켓을 사용하여 통신을 하게 됩니다. 
-while True: 
-    print('wait')
+@app.route('/request/valid-token', methods=['POST'])
+def requestValidateToken():
+    req = request.get_json()
+    response = issuer.requestValidateToken(req['token'])
+    return jsonify(response)
 
-    socket, addr = issuer_socket.accept() 
-    start_new_thread(threaded, (socket, addr, issuer)) 
+@app.route('/request/gml-id', methods=['POST'])
+def requestGmlId():
+    req = request.get_json()
+    response = issuer.requestGmlId(req['token'], req['sign'])
+    return jsonify(response)
 
-issuer_socket.close() 
+if __name__ == "__main__":
+    # 특정 포트로 열기 ##########################################
+    app.run()
