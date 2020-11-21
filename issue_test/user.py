@@ -87,7 +87,9 @@ class User:
     
     # Make a signature of the message
     def makeSign(self, message):
-        pass
+        sign = groupsig.sign(message, self.usk, self.gpk)
+        base64_sign = signature.signature_export(sign)
+        return base64_sign
     
     
     # Receive user secret key and group public key
@@ -96,7 +98,7 @@ class User:
         base64_sign = self.makeSign(message)
         
         url = User.URL + "/request/add-member" + User.SERVER_PORT
-        request = {"uid":self.id, "token":self.token, "sign":sign}
+        request = {"uid":self.id, "token":self.token, "sign":base64_sign}
         response = requests.post(url, request)
         response = response.json()
         
