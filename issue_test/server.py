@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 from pygroupsig import grpkey, constants
 from flask import request, jsonify
-import requests
+import requests, json
 
 
 class Server:
     
     _ISSUER_URL = "http://172.17.0.3"
     # _ISSUER_URL = "http://127.0.0.1"
-    _ISSUER_PORT = "5000"
+    _ISSUER_PORT = ":5000"
     TYPE_USER = 1
     TYPE_STORE = 2
     
@@ -27,18 +27,19 @@ class Server:
     
     # Load gpk
     def setup(self):
+        headers = {"content-type":"application/json"}
+        url = Server._ISSUER_URL + Server._ISSUER_PORT + "/request/gpk"
+
         # 방역당국에 user group gpk 받아옴
-        url = Server._ISSUER_URL + "/request/gpk" + Server._ISSUER_PORT
         request = {"group-type":Server.TYPE_USER}
-        response = requests.post(url, request)
+        response = requests.post(url, json.dumps(request), headers=headers)
         response = response.json()
         base64_gpk = response["gpk"]
         self.gpk_user = grpkey.grpkey_import(constants.BBS04_CODE, base64_gpk)
         
         # 방역당국에 store group gpk 받아옴
-        url = Server._ISSUER_URL + "/request/gpk" + Server._ISSUER_PORT
         request = {"group-type":Server.TYPE_STORE}
-        response = requests.post(url, request)
+        response = requests.post(url, json.dumps(request), headers=headers)
         response = response.json()
         base64_gpk = response["gpk"]
         self.gpk_store = grpkey.grpkey_import(constants.BBS04_CODE, base64_gpk)
@@ -92,7 +93,7 @@ class Server:
             return response
         
         # 서버에 인증 요청
-        url = Server._ISSUER_URL + "/request/gml-id" + Server._ISSUER_PORT
+        url = Server._ISSUER_URL + Server._ISSUER_PORT + "/request/gml-id"
         request = {"token":token, "sign":sign}
         response = requests.post(url, request)
         response = response.json()

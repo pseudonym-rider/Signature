@@ -18,4 +18,4 @@ def requestAddGml():
 
 if __name__ == "__main__":
     # 특정 포트로 열기 ##########################################
-    app.run()
+    app.run(host='0.0.0.0', port='80')

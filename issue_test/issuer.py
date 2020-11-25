@@ -31,14 +31,14 @@ class Issuer:
     
     # Send manager secret key
     def requestGpk(self, group_type):
+        gpk = None
         # 타입에 따라서 gpk 반환 필요
         if group_type == Issuer.TYPE_USER:
-            base64_gpk = grpkey.grpkey_export(self.gpk_user)
-            response = {"gpk":base64_gpk}
+            gpk = grpkey.grpkey_export(self.gpk_user)
         if group_type == Issuer.TYPE_STORE:
-            base64_gpk = grpkey.grpkey_export(self.gpk_store)
-            response = {"gpk":base64_gpk}
+            gpk = grpkey.grpkey_export(self.gpk_store)
         
+        response = {"gpk":gpk}
         return response
     
     
