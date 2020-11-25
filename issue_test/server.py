@@ -96,12 +96,13 @@ class Server:
             token != self.my_user_token_table[uid]):
             return response
         
-        # 서버에 인증 요청
+        # 발급센터에 인증 요청
+        headers={"content-type":"application/json"}
         url = Server._ISSUER_URL + Server._ISSUER_PORT + "/request/gml-id"
         request = {"token":token, "sign":sign}
-        response = requests.post(url, request)
+        response = requests.post(url, data=json.dumps(request), headers=headers)
         response = response.json()
-        gml_id = response["id"]
+        gml_id = int(response["id"])
         
         if gml_id < 0:
             del(self.my_user_token_table[uid])
