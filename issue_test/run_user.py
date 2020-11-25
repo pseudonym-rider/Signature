@@ -9,5 +9,5 @@ if not u.relayToken():
     print("relay fail")
     exit(0)
 
-response = u.sendSign():
+response = u.sendSign()
 print("response : " + response)
