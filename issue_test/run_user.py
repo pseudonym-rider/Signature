@@ -1,6 +1,13 @@
 from user import User
 
 u = User()
-u.login()
-u.relayToken()
-u.sendSign()
+if not u.login():
+    print("login fail")
+    exit(0)
+
+if not u.relayToken():
+    print("relay fail")
+    exit(0)
+
+response = u.sendSign():
+print("response : " + response)

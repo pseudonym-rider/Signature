@@ -6,8 +6,8 @@ import requests
 
 class User:
     
-    URL = "http://127.0.0.1"
-    # URL = "http://35.188.48.200"
+    # URL = "http://127.0.0.1"
+    URL = "http://35.188.48.200"
     SERVER_PORT = ":80"
     ISSUER_PORT = ":5000"
     TYPE_USER = 1
@@ -20,11 +20,11 @@ class User:
         self.usk = None
         self.gpk = None
         self.group_type = None
-        
+        groupsig.init(constants.BBS04_CODE, 0)
     
     # Load gpk
     def setup(self):
-        url = User.URL + "/request/gpk" + User.ISSUER_PORT
+        url = User.URL + User.ISSUER_PORT + "/request/gpk"
         request = {"group-type":self.group_type}
         response = requests.post(url, request)
         response = response.json()
@@ -38,7 +38,7 @@ class User:
         self.id = input("id : ").strip()
         self.pw = input("pw : ").strip()
         
-        url = User.URL + "/request/token" + User.SERVER_PORT
+        url = User.URL + User.SERVER_PORT + "/request/token"
         request = {"id":self.id, "pw":self.pw}
         response = requests.post(url, request)
         response = response.json()
@@ -60,7 +60,7 @@ class User:
     
     # Relay token from server to issuer
     def relayToken(self):
-        url = User.URL + "/request/valid-token" + User.ISSUER_PORT
+        url = User.URL + User.ISSUER_PORT + "/request/valid-token"
         request = {"token":self.token}
         response = requests.post(url, request)
         response = response.json()
@@ -97,7 +97,7 @@ class User:
         message = self.makeMessage()
         base64_sign = self.makeSign(message)
         
-        url = User.URL + "/request/add-member" + User.SERVER_PORT
+        url = User.URL + User.SERVER_PORT + "/request/add-member"
         request = {"uid":self.id, "token":self.token, "sign":base64_sign}
         response = requests.post(url, request)
         response = response.json()

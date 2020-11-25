@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from pygroupsig import grpkey, constants
+from pygroupsig import grpkey, constants, groupsig
 from flask import request, jsonify
 import requests, json
 
@@ -13,6 +13,8 @@ class Server:
     TYPE_STORE = 2
     
     def __init__(self):
+        groupsig.init(constants.BBS04_CODE, 0)
+        
         self.gpk_user = None
         self.my_user_token_table = {}
         self.my_user_gml = {}
@@ -35,6 +37,7 @@ class Server:
         response = requests.post(url, json.dumps(request), headers=headers)
         response = response.json()
         base64_gpk = response["gpk"]
+        print(base64_gpk)
         self.gpk_user = grpkey.grpkey_import(constants.BBS04_CODE, base64_gpk)
         
         # 방역당국에 store group gpk 받아옴
@@ -42,6 +45,7 @@ class Server:
         response = requests.post(url, json.dumps(request), headers=headers)
         response = response.json()
         base64_gpk = response["gpk"]
+        print(base64_gpk)
         self.gpk_store = grpkey.grpkey_import(constants.BBS04_CODE, base64_gpk)
         
         return
