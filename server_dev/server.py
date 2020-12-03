@@ -83,12 +83,15 @@ class Server:
         t = threading.Thread(target=self.update_my_gml, args=(id, usk, group_type))
         t.start()
         
+        base64_gpk = grpkey.grpkey_export(self._user_gpk)
         base64_usk = memkey.memkey_export(usk)
-        return {"gpk":self._user_gpk, "usk":base64_usk}
+        return {"gpk":base64_gpk, "usk":base64_usk}
     
     # sign message and return sign
-    def sign_msg(self, body, usk, group_type):
+    def sign_msg(self, body, base64_usk, group_type):
         grpkey = self._user_gpk if group_type == Server._TYPE_USER else self._store_gpk
+        usk = memkey.memkey_import(constants.BBS04_CODE, base64_usk)
+        
         sign = groupsig.sign(body, usk, grpkey)
         base64_sign = signature.signature_export(sign)
         return {"sign":base64_sign}
