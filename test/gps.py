@@ -1,5 +1,5 @@
 def save_gps(gps, time):
-    with open("./gps-db", "w") as f:
+    with open("./gps-db", "a") as f:
         f.write(gps + "\n" + time + "\n")
     return True
 
