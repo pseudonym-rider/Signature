@@ -15,11 +15,11 @@ def issue_key():
     response = server.issue_key(req["id"], req["type"])
     return jsonify(response)
 
-@app.route('/request/get-sign', methods=['POST'])
-def get_sign():
-    req = request.get_json()
-    response = server.sign_msg(req["body"], req["usk"], req["type"])
-    return jsonify(response)
+# @app.route('/request/get-sign', methods=['POST'])
+# def get_sign():
+#     req = request.get_json()
+#     response = server.sign_msg(req["body"], req["usk"], req["type"])
+#     return jsonify(response)
 
 @app.route('/request/find-signatory', methods=['POST'])
 def open_sign():
