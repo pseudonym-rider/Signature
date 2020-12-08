@@ -88,13 +88,27 @@ class Server:
         return {"gpk":base64_gpk, "usk":base64_usk}
     
     # sign message and return sign
-    def sign_msg(self, body, base64_usk, group_type):
-        grpkey = self._user_gpk if group_type == Server._TYPE_USER else self._store_gpk
-        usk = memkey.memkey_import(constants.BBS04_CODE, base64_usk)
+    # def sign_msg(self, body, base64_usk, group_type):
+    #     grpkey = self._user_gpk if group_type == Server._TYPE_USER else self._store_gpk
+    #     usk = memkey.memkey_import(constants.BBS04_CODE, base64_usk)
+    #     sign = groupsig.sign(body, usk, grpkey)
+    #     base64_sign = signature.signature_export(sign)
+    #     return {"sign":base64_sign}
+    
+    # sign message and return sign 
+    def sign_msg(self, body, base64_user_secret, base64_store_secret):
+        user_grpkey = self._user_gpk
+        store_grpkey = self._store_gpk
+        user_secret = memkey.memkey_import(constants.BBS04_CODE, base64_user_secret)
+        store_secret = memkey.memkey_import(constants.BBS04_CODE, base64_store_secret)
         
-        sign = groupsig.sign(body, usk, grpkey)
-        base64_sign = signature.signature_export(sign)
-        return {"sign":base64_sign}
+        user_sign = groupsig.sign(body, user_secret, user_grpkey)
+        store_sign = groupsig.sign(body, store_secret, store_grpkey)
+        
+        base64_user_sign = signature.signature_export(user_sign)
+        base64_store_sign = signature.signature_export(store_sign)
+        
+        return {"user-sign":base64_user_sign, "store-sign":base64_store_sign}
     
     # open message and return signatory's id
     def open_sign(self, base64_sign, group_type):
