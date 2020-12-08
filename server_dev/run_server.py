@@ -27,7 +27,7 @@ def open_sign():
     response = server.open_sign(req["sign"], req["type"])
     return jsonify(response)
 
-@app.route('/receive_qr', methods=['POST'])
+@app.route('/receive-qr', methods=['POST'])
 def receive_qr():
     req = request.get_json()
     
