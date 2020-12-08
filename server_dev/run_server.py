@@ -1,8 +1,13 @@
 from flask import Flask, jsonify, request
 from server import Server
+from pymongo import MongoClient
 
 app = Flask(__name__)
 server = Server()
+client = MongoClient("127.0.0.1")
+qr_db = client.qr_db
+user_to_store_collection = qr_db.user_to_store
+store_to_user_collection = qr_db.store_to_user
 
 @app.route('/request/issue-key', methods=['POST'])
 def issue_key():
@@ -21,6 +26,60 @@ def open_sign():
     req = request.get_json()
     response = server.open_sign(req["sign"], req["type"])
     return jsonify(response)
+
+@app.route('/receive_qr', methods=['POST'])
+def receive_qr():
+    req = request.get_json()
+    
+    user_id = req["user-id"]
+    store_id = req["store-id"]
+    qr_time = req["time"]
+    user_secret = req["user-secret"]
+    store_secret = req["store-secret"]
+    
+    user_data = user_id + "?" + qr_time
+    store_data = store_id + "?" + qr_time
+    
+    # user-data and store-data contain each id and qr-time
+    signs_of_user_data = server.sign_msg(user_data, user_secret, store_secret)
+    signs_of_store_data = server.sign_msg(store_data, user_secret, store_secret)
+    
+    # save qr code to db
+    doc = {
+        "user-id":user_id,
+        "time":qr_time,
+        "user-sign":signs_of_user_data["user-sign"],
+        "store-sign":signs_of_user_data["store-sign"]
+    }
+    user_to_store_collection.insert(doc)
+    doc = {
+        "store-id":store_id,
+        "time":qr_time,
+        "user-sign":signs_of_store_data["user-sign"],
+        "store-sign":signs_of_store_data["store-sign"]
+    }
+    store_to_user_collection.insert(doc)
+    
+    return jsonify({"response":True})
+
+# check for the succesful update
+@app.route('/check-mongo', methods=['POST'])
+def check_mongo():
+    req = request.get_json()
+    
+    user_id = req["user-id"]
+    store_id = req["store-id"]
+    
+    u2s_dict = user_to_store_collection.find({"user-id":user_id})
+    s2u_dict = store_to_user_collection.find({"store-id":store_id})
+    
+    print("u2s_dict =>")
+    for x in u2s_dict:
+        print(x)
+    print("s2u_dict =>")
+    for x in s2u_dict:
+        print(x)
+    return jsonify({"u2s_dict":u2s_dict, "s2u_dict":s2u_dict})
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port='80')
