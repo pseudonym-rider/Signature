@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from server import Server
 from pymongo import MongoClient
+from datetime import datetime
 
 app = Flask(__name__)
 server = Server()
@@ -36,6 +37,12 @@ def receive_qr():
     qr_time = req["time"]
     user_secret = req["user-secret"]
     store_secret = req["store-secret"]
+    
+    now_time = (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds()
+    
+    # check validation of time
+    if now_time - int(qr_time) >= 15:
+        return jsonify({"response":False})
     
     user_data = user_id + "?" + qr_time
     store_data = store_id + "?" + qr_time
