@@ -5,7 +5,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 server = Server()
-client = MongoClient("127.0.0.1")
+client = MongoClient("172.17.0.3")
 qr_db = client.qr_db
 user_to_store_collection = qr_db.user_to_store
 store_to_user_collection = qr_db.store_to_user
