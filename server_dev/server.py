@@ -45,6 +45,7 @@ class Server:
     
     # set keys
     def setup(self, setting):
+        groupsig.init(constants.BBS04_CODE, 0)
         # 세팅된 값 불러오기
         if setting:
             base64_user_gpk = base64_user_msk = None
@@ -67,7 +68,6 @@ class Server:
             return
         
         # 세팅된 값 없으므로 새로 생성
-        groupsig.init(constants.BBS04_CODE, 0)
         bbs04_user = groupsig.setup(constants.BBS04_CODE)
         bbs04_store = groupsig.setup(constants.BBS04_CODE)
         
