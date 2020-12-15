@@ -2,9 +2,13 @@
 from pygroupsig import constants, groupsig
 from pygroupsig import signature, identity, message
 from pygroupsig import grpkey, mgrkey, memkey, gml as GML
-import threading
-import os
+import threading, os
+from pymongo import MongoClient
 
+client = MongoClient("172.17.0.3")
+gml_db = client.gml_db
+user_id_and_idx_collection = gml_db.user_id_and_idx
+store_id_and_idx_collection = gml_db.store_id_and_idx
 
 class Server:
     _TYPE_USER = "1"
@@ -15,14 +19,14 @@ class Server:
         self._user_gpk = None
         self._user_gml = None
         self._user_msk = None
-        self._my_user_gml_id_to_idx = {}
-        self._my_user_gml_idx_to_id = {}
+        # self._my_user_gml_id_to_idx = {}
+        # self._my_user_gml_idx_to_id = {}
         
         self._store_gpk = None
         self._store_gml = None
         self._store_msk = None
-        self._my_store_gml_id_to_idx = {}
-        self._my_store_gml_idx_to_id = {}
+        # self._my_store_gml_id_to_idx = {}
+        # self._my_store_gml_idx_to_id = {}
         
         setting = self.chek()
         self.setup(setting)
@@ -99,31 +103,28 @@ class Server:
         if group_type == Server._TYPE_STORE:
             GML.gml_export(self._store_gml, bytes("./store-gml".encode()))
         
-        grpkey, mgrkey, gml, my_id_to_idx, my_idx_to_id \
-            = None, None, None, None, None
+        grpkey, mgrkey, gml, my_gml_mongo = None, None, None, None
         
         if group_type == Server._TYPE_USER:
             grpkey = self._user_gpk
             mgrkey = self._user_msk
             gml = self._user_gml
-            my_id_to_idx = self._my_user_gml_id_to_idx
-            my_idx_to_id = self._my_user_gml_idx_to_id
+            my_gml_mongo = user_id_and_idx_collection
         if group_type == Server._TYPE_STORE:
             grpkey = self._store_gpk
             mgrkey = self._store_msk
             gml = self._store_gml
-            my_id_to_idx = self._my_store_gml_id_to_idx
-            my_idx_to_id = self._my_store_gml_idx_to_id
+            my_gml_mongo = store_id_and_idx_collection
         
         sign = groupsig.sign("valid", usk, grpkey)
         member = groupsig.open(sign, mgrkey, grpkey, gml)
         mem_id = identity.identity_to_string(member)
         
-        my_idx_to_id[mem_id] = id
-        if my_id_to_idx.get(id) == None:
-            my_id_to_idx[id] = list(mem_id)
-        else:
-            my_id_to_idx[id].append(mem_id)
+        doc = {
+            "id":id,
+            "idx":mem_id,
+        }
+        my_gml_mongo.insert(doc)
     
     # add member and issue user secret key
     def issue_key(self, id, group_type):
@@ -163,22 +164,25 @@ class Server:
     
     # open message and return signatory's id
     def open_sign(self, base64_sign, group_type):
-        mgrkey, grpkey, gml, my_idx_to_id = None, None, None, None
+        mgrkey, grpkey, gml, my_gml_mongo = None, None, None, None
         
         if group_type == Server._TYPE_USER:
             mgrkey = self._user_msk
             grpkey = self._user_gpk
             gml = self._user_gml
-            my_idx_to_id = self._my_user_gml_idx_to_id
+            my_gml_mongo = user_id_and_idx_collection
         if group_type == Server._TYPE_STORE:
             mgrkey = self._store_msk
             grpkey = self._store_gpk
             gml = self._store_gml
-            my_idx_to_id = self._my_store_gml_idx_to_id
+            my_gml_mongo = store_id_and_idx_collection
         
         sign = signature.signature_import(constants.BBS04_CODE, base64_sign)
         member = groupsig.open(sign, mgrkey, grpkey, gml)
         mem_id = identity.identity_to_string(member)
-        user_id = my_idx_to_id[mem_id]
+        
+        #################################################################################################
+        # my_gml_mongo에서 "idx":mem_id인 document의 "id"값 불러오기
+        # user_id = my_gml_mongo.find()
         
         return {"uid":user_id}
