@@ -74,6 +74,7 @@ if __name__ == "__main__":
                 continue
             join_msg = join(gpk)
             usk = join_msg['memkey']
+            print(memkey.memkey_export(usk))
         elif select == 3: 
             if gpk is None:
                 print('setup first (get group public key)')

@@ -10,35 +10,55 @@ from pygroupsig import message
 
 # Setup
 def setup_manager():
-    fname = input("input gpk file (if you don't have gpk file, press enter)").strip()
     bbs04 = None
 
-    if fname == '':
-        bbs04 = groupsig.setup(constants.BBS04_CODE) # BBS group signature
-    else:
-        groupsig.init(constants.BBS04_CODE, 0)
-        with open(fname, "r") as f:
-            b64gpk = f.readline()
-            gpk = grpkey.grpkey_import(constants.BBS04_CODE, b64gpk)
-            bbs04 = groupsig.setup(constants.BBS04_CODE, grpkey=gpk)
+    print("1번 : 새로 시작")
+    print("2번 : 불러오기")
+    menu = int(input())
     
-    gpk = bbs04['grpkey']   # group public key
-
-    # share group public key
-    with open("./gpk", "w") as f:
+    if menu == 1:
+        bbs04 = groupsig.setup(constants.BBS04_CODE) # BBS group signature
+        gpk = bbs04['grpkey']
+        msk = bbs04['mgrkey']
+        GML = bbs04['gml']
         b64gpk = grpkey.grpkey_export(gpk)
-        f.write("{}".format(b64gpk))
+        with open("./gpk", "w") as f:
+            f.write(b64gpk)
+        b64msk = mgrkey.mgrkey_export(msk)
+        with open("./msk", "w") as f:
+            f.write(b64msk)
+        gml.gml_export(GML, bytes("./gml".encode()))
+        
+    elif menu == 2: 
+        groupsig.init(constants.BBS04_CODE, 0)
+        b64gpk = b64msk = None
+        with open("./gpk", "r") as f:
+            b64gpk = f.readline()
+        with open("./msk", "r") as f:
+            b64msk = f.readline()
+        gpk = grpkey.grpkey_import(constants.BBS04_CODE, b64gpk)
+        msk = mgrkey.mgrkey_import(constants.BBS04_CODE, b64msk)
+        GML = gml.gml_import(constants.BBS04_CODE, bytes("./gml".encode()))
+        bbs04 = {}
+        bbs04["grpkey"] = gpk
+        bbs04["mgrkey"] = msk
+        bbs04["gml"] = GML
     
     return bbs04
 
 
 # Join
 def join_setup():
-    msg1 = groupsig.join_mgr(0, msk, gpk, gml = gml)    # Runs the manager side of join of the scheme.
+    msg1 = groupsig.join_mgr(0, msk, gpk, gml = group_member_list)    # Runs the manager side of join of the scheme.
 
     # share invite message
     with open("invitation", "w") as f:
         f.write("{}\n".format(message.message_to_base64(msg1)))
+    
+    # f = open("gml", "w")
+    print("get_joinseq {}".format(groupsig.get_joinseq(constants.BBS04_JOIN_SEQ)))
+    print("get_joinseq {}".format(groupsig.get_joinseq(constants.BBS04_CODE)))
+    gml.gml_export(group_member_list, bytes("./gml".encode()))
     
     print('send a invitation')
     return
@@ -85,7 +105,7 @@ if __name__ == "__main__":
     bbs = None
     gpk = None
     msk = None
-    gml = None
+    group_member_list = None
     while True:
         print("---menu---")
         print("1. setup manager")
@@ -99,7 +119,7 @@ if __name__ == "__main__":
         if select == 1:
             bbs = setup_manager()
             gpk = bbs['grpkey']
-            gml = bbs['gml']
+            group_member_list = bbs['gml']
             msk = bbs['mgrkey']
         elif select == 2:
             if bbs is None:
@@ -115,7 +135,7 @@ if __name__ == "__main__":
             if bbs is None:
                 print("setup first")
                 continue
-            open_signature(msk, gpk, gml)
+            open_signature(msk, gpk, group_member_list)
         else: break
         
     groupsig.clear(constants.BBS04_CODE, bbs['config'])
